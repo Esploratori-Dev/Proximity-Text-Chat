@@ -45,9 +45,9 @@ SOFTWARE.
 import { world, system } from "@minecraft/server";
 import { ModalFormData } from "@minecraft/server-ui";
 
-world.saveDynamicProperty=async function(name, value){
+function saveDynamicProperty(name, value){
     system.run(()=>{
-        this.setDynamicProperty(name, value);
+        world.setDynamicProperty(name, value);
     })
 }
 
@@ -85,25 +85,25 @@ async function show_menu(player){
             }
             else{
                 settings.game_proximity_distance=new_dist;
-                world.saveDynamicProperty("esploratori:proximity_distance", new_dist);
+                saveDynamicProperty("esploratori:proximity_distance", new_dist);
             }
         }
 
         if (rank_template.length>0 && rank_template!==settings.rank_template){
             settings.rank_template=rank_template;
-            world.saveDynamicProperty("esploratori:rank_template", rank_template);
+            saveDynamicProperty("esploratori:rank_template", rank_template);
         } 
         if (do_template!==settings.do_template){
             settings.do_template=do_template;
-            world.saveDynamicProperty("esploratori:do_template", do_template);
+            saveDynamicProperty("esploratori:do_template", do_template);
         }
         if (do_admin_tag!==settings.do_admin_tag){
             settings.do_admin_tag=do_admin_tag;
-            world.saveDynamicProperty("esploratori:do_admin_tag", do_admin_tag);
+            saveDynamicProperty("esploratori:do_admin_tag", do_admin_tag);
         }
         if (deaf_message!==settings.deaf_message){
             settings.deaf_message=deaf_message;
-            world.saveDynamicProperty("esploratori:deaf_message", deaf_message);
+            saveDynamicProperty("esploratori:deaf_message", deaf_message);
         }
         player.sendMessage("§eAll valid changes have been saved.");
     })
@@ -135,7 +135,7 @@ world.beforeEvents.chatSend.subscribe(e=>{
         }
         if (Number.parseInt(proximity_distance)>0){
             settings.game_proximity_distance=Number.parseInt(proximity_distance);
-            world.saveDynamicProperty("esploratori:proximity_distance", settings.game_proximity_distance);
+            saveDynamicProperty("esploratori:proximity_distance", settings.game_proximity_distance);
         }
         else {
             e.sender.sendMessage("§cWrong arguments. Usage: §oesploratori:proximity_setup <proximity distance (number)> <use admin tag (true/false)>"); return;
@@ -144,11 +144,11 @@ world.beforeEvents.chatSend.subscribe(e=>{
         if (do_admin){
             if (do_admin=="true"){
                 settings.do_admin_tag=true;
-                world.saveDynamicProperty("esploratori:do_admin_tag", true);
+                saveDynamicProperty("esploratori:do_admin_tag", true);
             }
             else if (do_admin=="false"){
                 settings.do_admin_tag=false;
-                world.saveDynamicProperty("esploratori:do_admin_tag", false);
+                saveDynamicProperty("esploratori:do_admin_tag", false);
             }
             else {
                 e.sender.sendMessage("§cWrong arguments. Usage: §oesploratori:proximity_setup <proximity distance (number)> <use admin tag (true/false)>"); return;
@@ -158,30 +158,31 @@ world.beforeEvents.chatSend.subscribe(e=>{
     }
 })
 
+
 world.beforeEvents.chatSend.subscribe(e=>{
     if (e.message.startsWith(settings.options_command)) return;
-
-    const targets = e.sender.dimension.getPlayers({location: e.sender.location, maxDistance: settings.game_proximity_distance});
-
+    
+    e.cancel=true;
+    const player = e.sender;
+    
     if (settings.do_template){ // use the rank template
-        e.cancel=true;
         let message = settings.rank_template;
         message=message.replace(/\$u/g, e.sender.name);
         message=message.replace(/\$n/g, e.sender.nameTag);
         message=message.replace(/\$m/g, e.message);
         message=message.replace(/\$t/g, e.sender.getTags().find(v=>v.startsWith(settings.rank_prefix))?.slice(settings.rank_prefix.length+1)??settings.default_rank);
-        const player = e.sender;
+        
         player.runCommandAsync(`tellraw @a[r=${settings.game_proximity_distance}] {"rawtext":[{"text":"${message}"}]}`).then(r=>{
             if (targets.length===1 && settings.deaf_message)
             player.sendMessage("§iOther players are too far away, they can't hear you!")
         }) 
     }
     else {
-        e.targets=targets;
-        e.sendToTargets=true;
-        if (targets.length===1 && settings.deaf_message)
-            e.sender.sendMessage("§iOther players are too far away, they can't hear you!")
-    }
+        player.runCommandAsync(`tellraw @a[r=${settings.game_proximity_distance}] {"rawtext":[{"text":"<${player.name}> ${e.message}"}]}`).then(r=>{
+            if (settings.deaf_message && world.getPlayers({maxDistance:settings.game_proximity_distance}).length===1)
+            player.sendMessage("§iOther players are too far away, they can't hear you!")
+        })        
+    }   
 })
 
 system.afterEvents.scriptEventReceive.subscribe(e=>{
