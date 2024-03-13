@@ -171,13 +171,13 @@ world.beforeEvents.chatSend.subscribe(e=>{
         message=message.replace(/\$t/g, e.sender.getTags().find(v=>v.startsWith(settings.rank_prefix))?.slice(settings.rank_prefix.length+1)??settings.default_rank);
         
         player.runCommandAsync(`tellraw @a[r=${settings.game_proximity_distance}] {"rawtext":[{"text":"${message}"}]}`).then(r=>{
-            if (targets.length===1 && settings.deaf_message)
+            if (settings.deaf_message && player.dimension.getPlayers({maxDistance:settings.game_proximity_distance, location: player.location}).length===1)
             player.sendMessage("§iOther players are too far away, they can't hear you!")
         }) 
     }
     else {
         player.runCommandAsync(`tellraw @a[r=${settings.game_proximity_distance}] {"rawtext":[{"text":"<${player.name}> ${e.message}"}]}`).then(r=>{
-            if (settings.deaf_message && world.getPlayers({maxDistance:settings.game_proximity_distance}).length===1)
+            if (settings.deaf_message && player.dimension.getPlayers({maxDistance:settings.game_proximity_distance, location: player.location}).length===1)
             player.sendMessage("§iOther players are too far away, they can't hear you!")
         })        
     }   
