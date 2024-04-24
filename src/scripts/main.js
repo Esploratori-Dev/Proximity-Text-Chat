@@ -42,25 +42,12 @@ SOFTWARE.
 
 import { world, system } from "@minecraft/server";
 import { ModalFormData } from "@minecraft/server-ui";
+import { settings, colors} from "./data/data"
 
 function saveDynamicProperty(name, value){
     system.run(()=>{
         world.setDynamicProperty(name, value);
     })
-}
-
-const settings = {
-    default_proximity_distance: 50,
-    game_proximity_distance: 50,
-    do_admin_tag: false,
-    deaf_message: false,
-    admin_tag: "admin",
-    options_command: "esploratori:proximity_setup",
-    rank_template: "[$t§r] <$u> $m", // %t tag, %u username, %n nametag, %m message
-    do_template: false,
-
-    rank_prefix: "rank",
-    default_rank: "Member"
 }
 
 async function show_menu(player){
@@ -69,13 +56,13 @@ async function show_menu(player){
     .textField("From this menu you can edit this addon's behaviour.\n\n"+
         "Proximity distance", settings.game_proximity_distance.toString())
     .textField("ChatRank template", settings.rank_template)
-    .toggle("Enable Chat-Rank", settings.do_template)
+    .toggle("Use Chat-Rank", settings.do_template)
     .toggle("Admin tag only", settings.do_admin_tag)
     .toggle(`Mute message (§o"nobody can hear"§r)`, settings.deaf_message)
-
+    .toggle("Addon enabled", settings.enabled)
     return menu_form.show(player).then(res=>{
         if (res.canceled) return;
-        const [distance, rank_template, do_template, do_admin_tag, deaf_message] = res.formValues;
+        const [distance, rank_template, do_template, do_admin_tag, deaf_message, enabled] = res.formValues;
         if (distance.length>0){
             const new_dist = parseInt(distance);
             if (isNaN(new_dist)){
@@ -103,8 +90,38 @@ async function show_menu(player){
             settings.deaf_message=deaf_message;
             saveDynamicProperty("esploratori:deaf_message", deaf_message);
         }
+        if (enabled!==settings.enabled){
+            settings.enabled=enabled;
+            saveDynamicProperty("esploratori:enabled", enabled);
+        }
         player.sendMessage("§eAll valid changes have been saved.");
     })
+}
+
+async function show_tag_manager(player){
+    const players = world.getAllPlayers();
+    const color_names = Object.keys(colors)
+    color_names.unshift("<default>")
+    const tag_form = new ModalFormData()
+        .title("Proximity Tag Manager")
+        .dropdown("From this menu you can add or change rank tags for your players.\n\n"+
+            "Target", players.map(p=>p.name))
+        .textField("Rank", "§oe.g. Admin")
+        .dropdown("Color", color_names.map(c=>c.replace("_", " ")), 0)
+
+        return tag_form.show(player).then(res=>{
+            if (res.canceled) return;
+
+            const [player_idx, rank_text, color_idx] = res.formValues;
+            if (rank_text.includes("$")){
+                return player.sendMessage(`§crank name cannot contain '$'`);
+            }
+            const colored_rank = ((color_idx>0)?colors[color_names[color_idx]]:"")+rank_text+"§r"
+            players[player_idx].getTags().forEach(t=>{if (t.startsWith(settings.rank_prefix+":")) player.removeTag(t)}); //removing old tags
+            players[player_idx].addTag(settings.rank_prefix+":"+colored_rank);
+
+            player.sendMessage(`§eAdded rank "${colored_rank}§r§e" to §o${player.name}`);
+        })
 }
 
 world.afterEvents.worldInitialize.subscribe((e)=>{
@@ -114,6 +131,7 @@ world.afterEvents.worldInitialize.subscribe((e)=>{
 
     settings.rank_template = world.getDynamicProperty("esploratori:rank_template")??settings.rank_template;
     settings.do_template = world.getDynamicProperty("esploratori:do_template")??settings.do_template;
+    settings.enabled = world.getDynamicProperty("esploratori:enabled")??settings.enabled;
    
     console.log(`Proximity distance started. Proximity distance is ${settings.game_proximity_distance} blocks. Admin-lock enabled: ${settings.do_admin_tag}`);
 })
@@ -158,22 +176,26 @@ world.beforeEvents.chatSend.subscribe(e=>{
 
 
 world.beforeEvents.chatSend.subscribe(e=>{
-    if (e.message.startsWith(settings.options_command)) return;
+    if (e.message.startsWith(settings.options_command) || !settings.enabled) return;
     
     e.cancel=true;
     const player = e.sender;
     
     if (settings.do_template){ // use the rank template
+        const rank = e.sender.getTags().find(v=>v.startsWith(settings.rank_prefix))?.slice(settings.rank_prefix.length+1);
+        const color = (rank.startsWith("§"))?rank.slice(0, 2):colors["white"];
+
         let message = settings.rank_template;
         message=message.replace(/\$u/g, e.sender.name);
         message=message.replace(/\$n/g, e.sender.nameTag);
+        message=message.replace(/\$t/g, rank??settings.default_rank);
+        message=message.replace(/\$c/g, color);
         message=message.replace(/\$m/g, e.message);
-        message=message.replace(/\$t/g, e.sender.getTags().find(v=>v.startsWith(settings.rank_prefix))?.slice(settings.rank_prefix.length+1)??settings.default_rank);
         
         player.runCommandAsync(`tellraw @a[r=${settings.game_proximity_distance}] {"rawtext":[{"text":"${message}"}]}`).then(r=>{
             if (settings.deaf_message && player.dimension.getPlayers({maxDistance:settings.game_proximity_distance, location: player.location}).length===1)
             player.sendMessage("§iOther players are too far away, they can't hear you!")
-        }) 
+        })
     }
     else {
         player.runCommandAsync(`tellraw @a[r=${settings.game_proximity_distance}] {"rawtext":[{"text":"<${player.name}> ${e.message}"}]}`).then(r=>{
@@ -184,14 +206,22 @@ world.beforeEvents.chatSend.subscribe(e=>{
 })
 
 system.afterEvents.scriptEventReceive.subscribe(e=>{
+    const player = e.sourceEntity;
+    if (settings.do_admin_tag && !player.hasTag(settings.admin_tag)){
+        return player.sendMessage("§cYou can't run this command as you don't have the admin tag.")
+    }
     switch(e.id.slice(10)){
         case "menu":{
-            show_menu(e.sourceEntity);
+            show_menu(player);
             break;
         }
         case "reset":{
             world.clearDynamicProperties();
-            e.sourceEntity?.sendMessage("§eAll stored data has been deleted.")
+            player?.sendMessage("§eAll stored data has been deleted.")
+            break;
+        }
+        case "addrank":{
+            show_tag_manager(e.sourceEntity)
             break;
         }
     }

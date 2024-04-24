@@ -1,7 +1,7 @@
 # Bedrock Proximity Text Chat
-Hello! Ever wanted to have proximity chat on your server, realm or world? To have players chatting only if they are close enough one to another just like in real life?Then this addon is the solution for you. Super light, easy to setup, simple to use!Official Discord Server
+Hello! Ever wanted to have proximity chat on your server, realm or world? To have players chatting only if they are close enough one to another just like in real life?Then this addon is the solution for you. Super light, easy to setup, simple to use!
 
-**Bedrock Proximity Text Chat** from [Esploratori-Development](https://discord.gg/A2SDjxQshJ) is extremely compact and light, and simply aims to provide this single functionality to your world, by using uniquely scripts.
+**Bedrock Proximity Text Chat** from [Esploratori-Development](https://discord.gg/A2SDjxQshJ) is extremely compact and light, and simply aims to provide this single functionality to your world, by using uniquely scripting.
 
 ## Setup
 * Enable experiments on your world
@@ -10,7 +10,7 @@ Hello! Ever wanted to have proximity chat on your server, realm or world? To hav
 
 ### Chat-Rank
 * The messages will appearance will be modelled according to the template: 
- * `$t` rank-rag (starting with `rank:`
+ * `$t` rank-rag (starting with `rank:`)
  * `$u` username of the sender
  * `$n` nametag of the sender
  * `$m` message content
