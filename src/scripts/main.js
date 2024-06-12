@@ -109,19 +109,20 @@ async function show_tag_manager(player){
         .textField("Rank", "§oe.g. Admin")
         .dropdown("Color", color_names.map(c=>c.replace("_", " ")), 0)
 
-        return tag_form.show(player).then(res=>{
-            if (res.canceled) return;
+    return tag_form.show(player).then(res=>{
+        if (res.canceled) return;
 
-            const [player_idx, rank_text, color_idx] = res.formValues;
-            if (rank_text.includes("$")){
-                return player.sendMessage(`§crank name cannot contain '$'`);
-            }
-            const colored_rank = ((color_idx>0)?colors[color_names[color_idx]]:"")+rank_text+"§r"
-            players[player_idx].getTags().forEach(t=>{if (t.startsWith(settings.rank_prefix+":")) player.removeTag(t)}); //removing old tags
-            players[player_idx].addTag(settings.rank_prefix+":"+colored_rank);
+        const [player_idx, rank_text, color_idx] = res.formValues;
+        const target = players[player_idx];
+        if (rank_text.includes("$")){
+            return player.sendMessage(`§crank name cannot contain '$'`);
+        }
+        const colored_rank = ((color_idx>0)?colors[color_names[color_idx]]:"")+rank_text+"§r"
+        target.getTags().forEach(t=>{if (t.startsWith(settings.rank_prefix+":")) target.removeTag(t)}); //removing old tags
+        target.addTag(settings.rank_prefix+":"+colored_rank);
 
-            player.sendMessage(`§eAdded rank "${colored_rank}§r§e" to §o${player.name}`);
-        })
+        player.sendMessage(`§eAdded rank "${colored_rank}§r§e" to §o${target.name}`);
+    })
 }
 
 world.afterEvents.worldInitialize.subscribe((e)=>{
@@ -183,7 +184,7 @@ world.beforeEvents.chatSend.subscribe(e=>{
     
     if (settings.do_template){ // use the rank template
         const rank = e.sender.getTags().find(v=>v.startsWith(settings.rank_prefix))?.slice(settings.rank_prefix.length+1);
-        const color = (rank.startsWith("§"))?rank.slice(0, 2):colors["white"];
+        const color = (rank?.startsWith("§"))?rank.slice(0, 2):colors["white"];
 
         let message = settings.rank_template;
         message=message.replace(/\$u/g, e.sender.name);
