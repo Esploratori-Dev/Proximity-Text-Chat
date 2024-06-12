@@ -1,5 +1,5 @@
 /**
- * PROXIMITY TEXT CHAT ADDON v1.4.0 for Minecraft Bedrock Edition v1.20.80 lets your users chat only while in a fixed range from each other, 
+ * PROXIMITY TEXT CHAT ADDON v1.4.1 for Minecraft Bedrock Edition v1.20.80 lets your users chat only while in a fixed range from each other, 
  * and in the same dimension. Through commands you can set the distance. Note: your members can still chat through commands such as
  * /me and /say.
  * 
@@ -10,7 +10,6 @@
  * This addon was developed by InnateAlpaca of Esploratori-Development. You can reach us at:
  * - Discord: https://discord.gg/A2SDjxQshJ
  * - Github: https://github.com/InnateAlpaca
- * - Fiverr: https://www.fiverr.com/innatedeveloper
  * - Email: info@esploratori.space
  * More contacts at https://bedrockbridge.esploratori.space/Contact.html
  */
