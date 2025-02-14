@@ -1,11 +1,11 @@
 {
     "format_version": 2,
     "header": {
-	"name": "Proximity Text Chat v1.4.6",
+	"name": "Proximity Text Chat v1.4.7",
     "description": "This addon available for worlds, realms, and servers introduces proximity chat for text messages. If two players are further than a set amount of blocks they won't be able to read each other messages.",        
     "uuid": "edb75486-4f76-4e60-88a0-107d4e378654",
-    "version": [1, 4, 6],
-    "min_engine_version": [1, 21, 50]
+    "version": [1, 4, 7],
+    "min_engine_version": [1, 21, 60]
     },
     "modules": [{
         "description": "scripting module for ProximityChat",
@@ -18,7 +18,7 @@
     "dependencies": [
         {
             "module_name": "@minecraft/server",
-            "version": "1.17.0-beta"
+            "version": "1.18.0-beta"
         },
         {
             "module_name": "@minecraft/server-ui",
