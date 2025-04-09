@@ -41,188 +41,170 @@ SOFTWARE.
 
 import { world, system } from "@minecraft/server";
 import { ModalFormData } from "@minecraft/server-ui";
-import { settings, colors} from "./data/data"
+import { settings, colors } from "./data/data.js";
 
-function saveDynamicProperty(name, value){
-    system.run(()=>{
-        world.setDynamicProperty(name, value);
-    })
+// Dynamische Speicherung
+function saveDynamicProperty(name, value) {
+    system.run(() => world.setDynamicProperty(name, value));
 }
 
-async function show_menu(player){
-    const menu_form = new ModalFormData()
-    .title("Proximity Text Chat")
-    .textField("From this menu you can edit this addon's behaviour.\n\n"+
-        "Proximity distance", settings.game_proximity_distance.toString())
-    .textField("ChatRank template", settings.rank_template)
-    .toggle("Use Chat-Rank", settings.do_template)
-    .toggle("Admin tag only", settings.do_admin_tag)
-    .toggle(`Mute message (§o"nobody can hear"§r)`, settings.deaf_message)
-    .toggle("Addon enabled", settings.enabled)
-    return menu_form.show(player).then(res=>{
-        if (res.canceled) return;
-        const [distance, rank_template, do_template, do_admin_tag, deaf_message, enabled] = res.formValues;
-        if (distance.length>0){
-            const new_dist = parseInt(distance);
-            if (isNaN(new_dist)){
-                player.sendMessage("§cThe distance you provided is not a valid number.");
-            }
-            else{
-                settings.game_proximity_distance=new_dist;
-                saveDynamicProperty("esploratori:proximity_distance", new_dist);
-            }
-        }
+// Menü anzeigen
+async function show_menu(player) {
+    const form = new ModalFormData()
+        .title("Proximity Text Chat")
+        .textField("Proximity distance", settings.game_proximity_distance.toString())
+        .textField("ChatRank template", settings.rank_template)
+        .toggle("Use Chat-Rank", settings.do_template)
+        .toggle("Admin tag only", settings.do_admin_tag)
+        .toggle("Mute message ('nobody can hear')", settings.deaf_message)
+        .toggle("Addon enabled", settings.enabled);
 
-        if (rank_template.length>0 && rank_template!==settings.rank_template){
-            settings.rank_template=rank_template;
-            saveDynamicProperty("esploratori:rank_template", rank_template);
-        } 
-        if (do_template!==settings.do_template){
-            settings.do_template=do_template;
-            saveDynamicProperty("esploratori:do_template", do_template);
-        }
-        if (do_admin_tag!==settings.do_admin_tag){
-            settings.do_admin_tag=do_admin_tag;
-            saveDynamicProperty("esploratori:do_admin_tag", do_admin_tag);
-        }
-        if (deaf_message!==settings.deaf_message){
-            settings.deaf_message=deaf_message;
-            saveDynamicProperty("esploratori:deaf_message", deaf_message);
-        }
-        if (enabled!==settings.enabled){
-            settings.enabled=enabled;
-            saveDynamicProperty("esploratori:enabled", enabled);
-        }
-        player.sendMessage("§eAll valid changes have been saved.");
-    })
-}
+    const res = await form.show(player);
+    if (res.canceled) return;
 
-async function show_tag_manager(player){
-    const players = world.getAllPlayers();
-    const color_names = Object.keys(colors)
-    color_names.unshift("<default>")
-    const tag_form = new ModalFormData()
-        .title("Proximity Tag Manager")
-        .dropdown("From this menu you can add or change rank tags for your players.\n\n"+
-            "Target", players.map(p=>p.name))
-        .textField("Rank", "§oe.g. Admin")
-        .dropdown("Color", color_names.map(c=>c.replace("_", " ")), 0)
-
-    return tag_form.show(player).then(res=>{
-        if (res.canceled) return;
-
-        const [player_idx, rank_text, color_idx] = res.formValues;
-        const target = players[player_idx];
-        if (rank_text.includes("$")){
-            return player.sendMessage(`§crank name cannot contain '$'`);
-        }
-        const colored_rank = ((color_idx>0)?colors[color_names[color_idx]]:"")+rank_text+"§r"
-        target.getTags().forEach(t=>{if (t.startsWith(settings.rank_prefix+":")) target.removeTag(t)}); //removing old tags
-        target.addTag(settings.rank_prefix+":"+colored_rank);
-
-        player.sendMessage(`§eAdded rank "${colored_rank}§r§e" to §o${target.name}`);
-    })
-}
-
-world.afterEvents.worldInitialize.subscribe((e)=>{
-    settings.game_proximity_distance = world.getDynamicProperty("esploratori:proximity_distance")??settings.default_proximity_distance;
-    settings.do_admin_tag = world.getDynamicProperty("esploratori:do_admin_tag")??settings.do_admin_tag;
-    settings.deaf_message = world.getDynamicProperty("esploratori:deaf_message")??settings.deaf_message;
-
-    settings.rank_template = world.getDynamicProperty("esploratori:rank_template")??settings.rank_template;
-    settings.do_template = world.getDynamicProperty("esploratori:do_template")??settings.do_template;
-    settings.enabled = world.getDynamicProperty("esploratori:enabled")??settings.enabled;
-   
-    console.log(`Proximity distance started. Proximity distance is ${settings.game_proximity_distance} blocks. Admin-lock enabled: ${settings.do_admin_tag}`);
-})
-
-// Command handler
-world.beforeEvents.chatSend.subscribe(e=>{
-    if (e.message.startsWith(settings.options_command)){
-        e.cancel=true;
-
-        if (settings.do_admin_tag&&!e.sender.hasTag(settings.admin_tag)){
-            e.sender.sendMessage("§cYou can't run this command as you are not a proximity_admin."); return;
-        }
-        
-        const [proximity_distance, do_admin] = e.message.slice(settings.options_command.length+1).split(' ');
-        if (proximity_distance.length==0){
-            e.sender.sendMessage(`Current proximty distance is: §o${settings.game_proximity_distance} blocks.`); return;
-        }
-        if (Number.parseInt(proximity_distance)>0){
-            settings.game_proximity_distance=Number.parseInt(proximity_distance);
-            saveDynamicProperty("esploratori:proximity_distance", settings.game_proximity_distance);
-        }
-        else {
-            e.sender.sendMessage("§cWrong arguments. Usage: §oesploratori:proximity_setup <proximity distance (number)> <use admin tag (true/false)>"); return;
-        }
-        
-        if (do_admin){
-            if (do_admin=="true"){
-                settings.do_admin_tag=true;
-                saveDynamicProperty("esploratori:do_admin_tag", true);
-            }
-            else if (do_admin=="false"){
-                settings.do_admin_tag=false;
-                saveDynamicProperty("esploratori:do_admin_tag", false);
-            }
-            else {
-                e.sender.sendMessage("§cWrong arguments. Usage: §oesploratori:proximity_setup <proximity distance (number)> <use admin tag (true/false)>"); return;
-            }
-        }        
-        e.sender.sendMessage("§eAll changes to proximity were executed");
+    const [distText, rank_template, do_template, do_admin_tag, deaf_message, enabled] = res.formValues;
+    const dist = parseInt(distText);
+    if (!isNaN(dist)) {
+        settings.game_proximity_distance = dist;
+        saveDynamicProperty("esploratori:proximity_distance", dist);
     }
-})
 
+    settings.rank_template = rank_template;
+    settings.do_template = do_template;
+    settings.do_admin_tag = do_admin_tag;
+    settings.deaf_message = deaf_message;
+    settings.enabled = enabled;
 
-world.beforeEvents.chatSend.subscribe(e=>{
-    if (e.message.startsWith(settings.options_command) || !settings.enabled) return;
-    
-    e.cancel=true;
-    const player = e.sender;
-    
-    if (settings.do_template){ // use the rank template
-        const rank = e.sender.getTags().find(v=>v.startsWith(settings.rank_prefix))?.slice(settings.rank_prefix.length+1);
-        const color = (rank?.startsWith("§"))?rank.slice(0, 2):colors["white"];
+    saveDynamicProperty("esploratori:rank_template", rank_template);
+    saveDynamicProperty("esploratori:do_template", do_template);
+    saveDynamicProperty("esploratori:do_admin_tag", do_admin_tag);
+    saveDynamicProperty("esploratori:deaf_message", deaf_message);
+    saveDynamicProperty("esploratori:enabled", enabled);
 
-        let message = settings.rank_template;
-        message=message.replace(/\$u/g, e.sender.name);
-        message=message.replace(/\$n/g, e.sender.nameTag);
-        message=message.replace(/\$t/g, rank??settings.default_rank);
-        message=message.replace(/\$c/g, color);
-        message=message.replace(/\$m/g, e.message);
-        
-        player.runCommandAsync(`tellraw @a[r=${settings.game_proximity_distance}] {"rawtext":[{"text":"${message}"}]}`).then(r=>{
-            if (settings.deaf_message && player.dimension.getPlayers({maxDistance:settings.game_proximity_distance, location: player.location}).length===1)
-            player.sendMessage("§iOther players are too far away, they can't hear you!")
-        })
+    player.sendMessage("§aSettings updated.");
+}
+
+// Rang-Manager anzeigen
+async function show_tag_manager(player) {
+    const players = world.getPlayers();
+    const color_names = Object.keys(colors);
+    color_names.unshift("<default>");
+
+    const form = new ModalFormData()
+        .title("Rank Tag Manager")
+        .dropdown("Select Player", players.map(p => p.name))
+        .textField("Rank", "e.g. Admin")
+        .dropdown("Color", color_names.map(c => c.replace("_", " ")), 0);
+
+    const res = await form.show(player);
+    if (res.canceled) return;
+
+    const [idx, rankText, colorIdx] = res.formValues;
+    const target = players[idx];
+
+    if (!target || rankText.includes("$")) {
+        return player.sendMessage("§cInvalid rank.");
     }
-    else {
-        player.runCommandAsync(`tellraw @a[r=${settings.game_proximity_distance}] {"rawtext":[{"text":"<${player.name}> ${e.message}"}]}`).then(r=>{
-            if (settings.deaf_message && player.dimension.getPlayers({maxDistance:settings.game_proximity_distance, location: player.location}).length===1)
-            player.sendMessage("§iOther players are too far away, they can't hear you!")
-        })        
-    }   
-})
 
-system.afterEvents.scriptEventReceive.subscribe(e=>{
+    const colorCode = (colorIdx > 0 ? colors[color_names[colorIdx]] : "");
+    const coloredRank = `${colorCode}${rankText}§r`;
+
+    // alte Tags entfernen & neuen setzen
+    target.getTags().forEach(t => {
+        if (t.startsWith(settings.rank_prefix + ":")) target.removeTag(t);
+    });
+    target.addTag(`${settings.rank_prefix}:${coloredRank}`);
+    player.sendMessage(`§aRank "${coloredRank}§r§a" set for §o${target.name}`);
+}
+
+// Initialisierung
+world.afterEvents.worldLoad.subscribe(() => {
+    settings.game_proximity_distance = world.getDynamicProperty("esploratori:proximity_distance") ?? settings.default_proximity_distance;
+    settings.rank_template = world.getDynamicProperty("esploratori:rank_template") ?? settings.rank_template;
+    settings.do_template = world.getDynamicProperty("esploratori:do_template") ?? settings.do_template;
+    settings.do_admin_tag = world.getDynamicProperty("esploratori:do_admin_tag") ?? settings.do_admin_tag;
+    settings.deaf_message = world.getDynamicProperty("esploratori:deaf_message") ?? settings.deaf_message;
+    settings.enabled = world.getDynamicProperty("esploratori:enabled") ?? settings.enabled;
+
+    console.warn(`[ProximityChat] Initialized. Distance: ${settings.game_proximity_distance}, Template: ${settings.do_template}`);
+});
+
+// Chat-Verarbeitung
+world.beforeEvents.chatSend.subscribe(e => {
+    if (e.message.startsWith(settings.options_command)) {
+        e.cancel = true;
+        if (settings.do_admin_tag && !e.sender.hasTag(settings.admin_tag)) {
+            return e.sender.sendMessage("§cYou are not a proximity_admin.");
+        }
+
+        const [distStr, adminFlag] = e.message.slice(settings.options_command.length + 1).split(" ");
+        const dist = parseInt(distStr);
+        if (!isNaN(dist)) {
+            settings.game_proximity_distance = dist;
+            saveDynamicProperty("esploratori:proximity_distance", dist);
+        }
+
+        if (adminFlag === "true" || adminFlag === "false") {
+            settings.do_admin_tag = adminFlag === "true";
+            saveDynamicProperty("esploratori:do_admin_tag", settings.do_admin_tag);
+        }
+
+        e.sender.sendMessage("§aProximity settings updated.");
+        return;
+    }
+
+    if (!settings.enabled) return;
+    e.cancel = true;
+
+    const sender = e.sender;
+    const nearbyPlayers = world.getPlayers().filter(p =>
+        p.dimension.id === sender.dimension.id &&
+        Math.sqrt(
+            Math.pow(p.location.x - sender.location.x, 2) +
+            Math.pow(p.location.y - sender.location.y, 2) +
+            Math.pow(p.location.z - sender.location.z, 2)
+        ) <= settings.game_proximity_distance
+    );
+
+    let chatMsg = `<${sender.name}> ${e.message}`;
+    if (settings.do_template) {
+        const tag = sender.getTags().find(t => t.startsWith(settings.rank_prefix + ":"))?.slice(settings.rank_prefix.length + 1);
+        const color = (tag?.startsWith("§")) ? tag.slice(0, 2) : colors["white"];
+        chatMsg = settings.rank_template
+            .replace(/\$u/g, sender.name)
+            .replace(/\$n/g, sender.nameTag)
+            .replace(/\$t/g, tag ?? settings.default_rank)
+            .replace(/\$c/g, color)
+            .replace(/\$m/g, e.message);
+    }
+
+    for (const p of nearbyPlayers) {
+        p.sendMessage(chatMsg);
+    }
+
+    if (settings.deaf_message && nearbyPlayers.length === 1) {
+        sender.sendMessage("§7§oNobody nearby heard you.");
+    }
+});
+
+// Menü-Aufruf
+system.afterEvents.scriptEventReceive.subscribe(e => {
     const player = e.sourceEntity;
-    if (settings.do_admin_tag && !player.hasTag(settings.admin_tag)){
-        return player.sendMessage("§cYou can't run this command as you don't have the admin tag.")
+    if (!player || (settings.do_admin_tag && !player.hasTag(settings.admin_tag))) {
+        player?.sendMessage("§cNo permission.");
+        return;
     }
-    switch(e.id.slice(10)){
-        case "menu":{
+
+    switch (e.id.slice(10)) {
+        case "menu":
             show_menu(player);
             break;
-        }
-        case "reset":{
+        case "addrank":
+            show_tag_manager(player);
+            break;
+        case "reset":
             world.clearDynamicProperties();
-            player?.sendMessage("§eAll stored data has been deleted.")
+            player.sendMessage("§eAll data reset.");
             break;
-        }
-        case "addrank":{
-            show_tag_manager(e.sourceEntity)
-            break;
-        }
     }
-}, {namespaces:["proximity"]})
+}, { namespaces: ["proximity"] });
