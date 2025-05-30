@@ -4,13 +4,18 @@ export const settings = {
     do_admin_tag: false,
     deaf_message: false,
     admin_tag: "admin",
+    ignore_tag: "proximity:god",  // players with this tag will be able to read all chat
     options_command: "esploratori:proximity_setup",
-    rank_template: "[$t§r] <$u> $m", // %t tag, %u username, %n nametag, %m message
+    rank_template: "[$...t§r] <$u> $m", // %t tag, %u username, %n nametag, %m message
+    name_template: "[$t§r] $n", // %t tag, %u username, %n nametag, %m message
     do_template: false,
-    enabled: true,
+    do_name_template: false,
+    proximity_enabled: true,
 
     rank_prefix: "rank",
-    default_rank: "Member"
+    default_rank: "Member",
+    nameTag_tag: "esp:nameTag",
+    update_loop_interval: 40
 }
 
 export const colors = {

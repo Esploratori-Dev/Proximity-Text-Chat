@@ -1,18 +1,18 @@
 {
     "format_version": 2,
     "header": {
-	"name": "Proximity Text Chat v1.4.9",
+	"name": "Proximity Text Chat v1.5.0",
     "description": "This addon available for worlds, realms, and servers introduces proximity chat for text messages. If two players are further than a set amount of blocks they won't be able to read each other messages.",        
     "uuid": "edb75486-4f76-4e60-88a0-107d4e378654",
-    "version": [1, 4, 9],
-    "min_engine_version": [1, 21, 70]
+    "version": [1, 5, 0],
+    "min_engine_version": [1, 21, 80]
     },
     "modules": [{
         "description": "scripting module for ProximityChat",
         "type": "script",
         "language": "javascript",
         "uuid": "18b667ea-c07d-44f7-a8c4-9fa8ecfe9881",
-        "version": [1, 4, 9],
+        "version": [1, 5, 0],
         "entry": "scripts/main.js"
     }],
     "dependencies": [
@@ -26,7 +26,7 @@
         }
     ],
     "metadata": {
-        "authors": ["InnateAlpaca102"],
+        "authors": ["InnateAlpaca102", "PoWeROffAPT"],
         "license": "MIT",
         "url": "https://github.com/InnateAlpaca"
     }
