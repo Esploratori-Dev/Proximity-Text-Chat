@@ -358,9 +358,9 @@ system.beforeEvents.startup.subscribe(({customCommandRegistry: registry})=>{
     }, (origin, targets) => {
         
         if (origin.sourceType === CustomCommandSource.Entity) {
-            const player = origin.sourceEntity;
-            const target = targets[0]
-            if (target){
+            const player = origin.sourceEntity;            
+            if (targets){
+                const target = targets[0]
                 system.run(() => show_removetag_manager(player, target));
             }                
             else
